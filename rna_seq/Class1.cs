@@ -16,15 +16,18 @@ namespace rna_seq
         List<float[]> c;
         List<float[]> pNorm;
         List<float[]> cNorm;
-        string[] genes;
+        List<string> genes;
         const int EXP = 1_000_000;
+        const int histogramRange = 12;
+        const int histogramRoof = 20;
+        const bool IgnoreZeroRows = false;
         double[] pVals;
         int pCount;
         int cCount;
         public Class1(string filepath)
         {
             string[] lines = File.ReadAllLines(filepath);
-            genes = new string[lines.Length - 1];
+            genes = new();
             pCount = 0;
             cCount = 0;
             for (int i = 0; i < lines.Length; i++)
@@ -70,13 +73,25 @@ namespace rna_seq
                         }
                     }
 
-                    if (!allZeros)
+                    if (IgnoreZeroRows)
+                    {
+
+                        if (!allZeros)
+                        {
+                            p.Add(tempP);
+                            pNorm.Add(tempPNorm);
+                            c.Add(tempC);
+                            cNorm.Add(tempCNorm);
+                            genes.Add(line[0]);
+                        }
+                    }
+                    else
                     {
                         p.Add(tempP);
                         pNorm.Add(tempPNorm);
                         c.Add(tempC);
                         cNorm.Add(tempCNorm);
-                        genes[i - 1] = line[0];
+                        genes.Add(line[0]);
                     }
                 }
             }
@@ -87,7 +102,6 @@ namespace rna_seq
         {
             Histogram h = new Histogram(pVals);
 
-            const int histogramRange = 20;
 
             int[] pocet = new int[histogramRange  + 1];
 
@@ -108,17 +122,17 @@ namespace rna_seq
 
             for (int i = 0; i < filtered.Length; i++)
             {
-                filtered[i] = (int)Math.Round((filtered[i] - min) / (max - (float)min) * histogramRange);
+                filtered[i] = (int)Math.Round((filtered[i] - min) / (max - (float)min) * histogramRoof);
             }
 
             //Array.Sort(filtered);
 
             string toPrint = "";
-            for (int j = filtered.Length - 1; j >= 0; j--)
+            for (int i = histogramRoof; i >= 0; i--)
             {
-                for (int i = 0; i < histogramRange; i++)
+                for (int j = 0; j < filtered.Length; j++)
                 {
-                    if (filtered[i] >= j)
+                    if (filtered[j] >= i)
                     {
                         toPrint += '|';
                     }
@@ -280,7 +294,7 @@ namespace rna_seq
             {
                 swapRequired = false;
                 for (int j = 0; j < pvalss.Count - i - 1; j++)
-                    if (pvalss[j] < pvalss[j + 1])
+                    if (pvalss[j] > pvalss[j + 1])
                     {
                         var tempVar = pvalss[j];
                         pvalss[j] = pvalss[j + 1];
