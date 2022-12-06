@@ -18,9 +18,11 @@ namespace rna_seq
         List<float[]> cNorm;
         List<string> genes;
         const int EXP = 1_000_000;
-        const int histogramRange = 12;
-        const int histogramRoof = 20;
-        const bool IgnoreZeroRows = false;
+        const int HISTOGRAM_RANGE = 50;
+        const int HISTOGRAM_ROOF = 20;
+        const double P_VALUE_FILTER_FLOOR = 0.05d;
+        const int MEAN_FILTER_FLOOR = 100;
+        const bool IGNORE_ZERO_ROWS = false;
         double[] pVals;
         int pCount;
         int cCount;
@@ -33,7 +35,7 @@ namespace rna_seq
             for (int i = 0; i < lines.Length; i++)
             {
                 var line = lines[i].Split(';');
-                
+
                 //spocitat pocet P a C
                 if (i == 0)
                 {
@@ -73,19 +75,11 @@ namespace rna_seq
                         }
                     }
 
-                    if (IgnoreZeroRows)
-                    {
+                    var meanP = tempP.Sum() / (float)tempP.Length;
+                    var meanC = tempC.Sum() / (float)tempC.Length;
 
-                        if (!allZeros)
-                        {
-                            p.Add(tempP);
-                            pNorm.Add(tempPNorm);
-                            c.Add(tempC);
-                            cNorm.Add(tempCNorm);
-                            genes.Add(line[0]);
-                        }
-                    }
-                    else
+
+                    if (meanP > MEAN_FILTER_FLOOR || meanC > MEAN_FILTER_FLOOR)
                     {
                         p.Add(tempP);
                         pNorm.Add(tempPNorm);
@@ -103,11 +97,11 @@ namespace rna_seq
             Histogram h = new Histogram(pVals);
 
 
-            int[] pocet = new int[histogramRange  + 1];
+            int[] pocet = new int[HISTOGRAM_RANGE  + 1];
 
             for (int i = 0; i < pVals.Length; i++)
             {
-                int val = (int)Math.Round(pVals[i] * histogramRange);
+                int val = (int)Math.Round(pVals[i] * HISTOGRAM_RANGE);
                 pocet[val]++;
             }
 
@@ -122,13 +116,13 @@ namespace rna_seq
 
             for (int i = 0; i < filtered.Length; i++)
             {
-                filtered[i] = (int)Math.Round((filtered[i] - min) / (max - (float)min) * histogramRoof);
+                filtered[i] = (int)Math.Round((filtered[i] - min) / (max - (float)min) * HISTOGRAM_ROOF);
             }
 
             //Array.Sort(filtered);
 
             string toPrint = "";
-            for (int i = histogramRoof; i >= 0; i--)
+            for (int i = HISTOGRAM_ROOF; i >= 0; i--)
             {
                 for (int j = 0; j < filtered.Length; j++)
                 {
@@ -283,7 +277,7 @@ namespace rna_seq
 
             for (int i = pVals.Length - 1; i >= 0; i--)
             {
-                if (pVals[i] < 0.05d)
+                if (pVals[i] < P_VALUE_FILTER_FLOOR)
                 {
                     pvalss.RemoveAt(i);
                     geness.RemoveAt(i);
